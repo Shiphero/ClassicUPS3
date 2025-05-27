@@ -1,0 +1,28 @@
+[build-system]
+requires = ["flit_core >=3.6,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "ClassicUPS3"
+version = "0.2.0"
+description = "Usable UPS Integration in Python 3.8+"
+readme = "README.rst"
+requires-python = ">=3.8"
+license = { text = "GPL-3.0-or-later" }
+authors = [ { name = "Jason Duncan", email = "jason.matthew.duncan@gmail.com" } ]
+keywords = ["UPS"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: GNU General Public License v3.0",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta"
+]
+dependencies = [
+    "dict2xml",
+    "xmltodict"
+]
+
+[project.urls]
+Homepage = "https://github.com/jduncan8142/ClassicUPS3"
