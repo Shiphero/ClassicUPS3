@@ -22,9 +22,9 @@ Installation is easy:
 
 .. code-block:: bash
 
-    $ pip install ClassicUPS
+    $ uv pip install ClassicUPS3
 
-ClassicUPS depends on libxml2 and libxslt. On Ubuntu, the packages are
+ClassicUPS3 depends on libxml2 and libxslt. On Ubuntu, the packages are
 ``libxml2-dev`` and ``libxslt-dev``.
 
 Quickstart
@@ -34,7 +34,7 @@ Create a UPSConnection object, which gives you access to common UPS methods:
 
 .. code-block:: python
 
-    from ClassicUPS import UPSConnection
+    from ClassicUPS3 import UPSConnection
 
     # Credentials obtained from the UPS website
     ups = UPSConnection(license_number,
