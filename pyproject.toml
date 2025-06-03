@@ -26,3 +26,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/jduncan8142/ClassicUPS3"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.11.11",
+]
