@@ -2,8 +2,7 @@ name: CI
 on:
   pull_request:
     branches:
-    - main
-  
+      - main
 
 jobs:
   build:
@@ -14,13 +13,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3      
-        
-      - name: Ruff check 
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Ruff check
         run: uv run ruff check --output-format=github
 
       - name: Ruff format
         run: uv run ruff format --check
-      
+
       - name: Pytest
-        run: uv run pytest
+        run: uv run pytest --cov=ClassicUPS3 --cov-fail-under=100

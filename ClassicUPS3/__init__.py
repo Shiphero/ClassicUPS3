@@ -1,1 +1,1 @@
-from ClassicUPS3.ups import UPSConnection
+from ClassicUPS3.ups import UPSConnection, TrackingInfo
