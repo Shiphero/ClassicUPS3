@@ -1,27 +1,27 @@
+import contextlib
 import json
 import urllib.request
-import xmltodict
-
 from binascii import a2b_base64
 from datetime import datetime
+from typing import ClassVar
+
+import xmltodict
 from dict2xml import dict2xml
 
 
-class UPSConnection(object):
-    test_urls = {
+class UPSConnection:
+    test_urls: ClassVar = {
         "track": "https://wwwcie.ups.com/ups.app/xml/Track",
         "ship_confirm": "https://wwwcie.ups.com/ups.app/xml/ShipConfirm",
         "ship_accept": "https://wwwcie.ups.com/ups.app/xml/ShipAccept",
     }
-    production_urls = {
+    production_urls: ClassVar = {
         "track": "https://onlinetools.ups.com/ups.app/xml/Track",
         "ship_confirm": "https://onlinetools.ups.com/ups.app/xml/ShipConfirm",
         "ship_accept": "https://onlinetools.ups.com/ups.app/xml/ShipAccept",
     }
 
-    def __init__(
-        self, license_number, user_id, password, shipper_number=None, debug=False
-    ):
+    def __init__(self, license_number, user_id, password, shipper_number=None, debug=False):
         self.license_number = license_number
         self.user_id = user_id
         self.password = password
@@ -37,17 +37,13 @@ class UPSConnection(object):
             }
         }
 
-        xml = """
+        xml = f"""
         <?xml version="1.0"?>
-        {access_request_xml}
+        {dict2xml(access_request)}
 
         <?xml version="1.0"?>
-        {api_xml}
-        """.format(
-            request_type=url_action,
-            access_request_xml=dict2xml(access_request),
-            api_xml=dict2xml(ups_request),
-        )
+        {dict2xml(ups_request)}
+        """
 
         return xml
 
@@ -57,9 +53,7 @@ class UPSConnection(object):
             url = self.test_urls[url_action]
 
         xml = self._generate_xml(url_action, ups_request)
-        resp = urllib.request.urlopen(
-            url, xml.encode("ascii", "xmlcharrefreplace")
-        ).read()
+        resp = urllib.request.urlopen(url, xml.encode("ascii", "xmlcharrefreplace")).read()
 
         return UPSResult(resp)
 
@@ -70,7 +64,7 @@ class UPSConnection(object):
         return Shipment(self, *args, **kwargs)
 
 
-class UPSResult(object):
+class UPSResult:
     def __init__(self, response):
         self.response = response
 
@@ -83,7 +77,7 @@ class UPSResult(object):
         return json.loads(json.dumps(xmltodict.parse(self.xml_response)))
 
 
-class TrackingInfo(object):
+class TrackingInfo:
     def __init__(self, ups_conn, tracking_number):
         self.tracking_number = tracking_number
 
@@ -112,37 +106,27 @@ class TrackingInfo(object):
         #   P: Pickup
         #   M: Manifest
 
-        shipment_activities = self.result.dict_response["TrackResponse"]["Shipment"][
-            "Package"
-        ]["Activity"]
-        if type(shipment_activities) != list:
+        shipment_activities = self.result.dict_response["TrackResponse"]["Shipment"]["Package"]["Activity"]
+        if not isinstance(shipment_activities, list):
             shipment_activities = [shipment_activities]
 
         return shipment_activities
 
     @property
     def delivered(self):
-        delivered = [
-            x
-            for x in self.shipment_activities
-            if x["Status"]["StatusType"]["Code"] == "D"
-        ]
+        delivered = [x for x in self.shipment_activities if x["Status"]["StatusType"]["Code"] == "D"]
         if delivered:
             return datetime.strptime(delivered[0]["Date"], "%Y%m%d")
 
     @property
     def in_transit(self):
-        in_transit = [
-            x
-            for x in self.shipment_activities
-            if x["Status"]["StatusType"]["Code"] == "I"
-        ]
+        in_transit = [x for x in self.shipment_activities if x["Status"]["StatusType"]["Code"] == "I"]
 
         return len(in_transit) > 0
 
 
-class Shipment(object):
-    SHIPPING_SERVICES = {
+class Shipment:
+    SHIPPING_SERVICES: ClassVar = {
         "1dayair": "01",  # Next Day Air
         "2dayair": "02",  # 2nd Day Air
         "ground": "03",  # Ground
@@ -162,7 +146,7 @@ class Shipment(object):
         "ups_today_express_saver": "86",  # UPS Today Express Saver.
     }
 
-    DCIS_TYPES = {
+    DCIS_TYPES: ClassVar = {
         "no_signature": 1,
         "signature_required": 2,
         "adult_signature_required": 3,
@@ -273,11 +257,9 @@ class Shipment(object):
         }
 
         if delivery_confirmation:
-            shipping_request["ShipmentConfirmRequest"]["Shipment"]["Package"][
-                "PackageServiceOptions"
-            ]["DeliveryConfirmation"] = {
-                "DCISType": self.DCIS_TYPES[delivery_confirmation]
-            }
+            shipping_request["ShipmentConfirmRequest"]["Shipment"]["Package"]["PackageServiceOptions"][
+                "DeliveryConfirmation"
+            ] = {"DCISType": self.DCIS_TYPES[delivery_confirmation]}
 
         if reference_numbers:
             reference_dict = []
@@ -287,57 +269,40 @@ class Shipment(object):
                 # 8/24/2013") ReferenceNumber/Code should hint on the type of
                 # the reference number. a list of codes can be found in
                 # appendix I (page 503) in the same document.
-                try:
+                with contextlib.suppress(Exception):
                     ref_code, ref_number = ref_number
-                except:
-                    pass
 
                 reference_dict.append({"Code": ref_code, "Value": ref_number})
             # reference_dict[0]['BarCodeIndicator'] = '1'
 
             if from_addr["country"] == "US" and to_addr["country"] == "US":
-                shipping_request["ShipmentConfirmRequest"]["Shipment"]["Package"][
-                    "ReferenceNumber"
-                ] = reference_dict
+                shipping_request["ShipmentConfirmRequest"]["Shipment"]["Package"]["ReferenceNumber"] = reference_dict
             else:
-                shipping_request["ShipmentConfirmRequest"]["Shipment"][
-                    "Description"
-                ] = description
-                shipping_request["ShipmentConfirmRequest"]["Shipment"][
-                    "ReferenceNumber"
-                ] = reference_dict
+                shipping_request["ShipmentConfirmRequest"]["Shipment"]["Description"] = description
+                shipping_request["ShipmentConfirmRequest"]["Shipment"]["ReferenceNumber"] = reference_dict
 
         if from_addr.get("address2"):
-            shipping_request["ShipmentConfirmRequest"]["Shipment"]["Shipper"][
-                "Address"
-            ]["AddressLine2"] = from_addr["address2"]
+            shipping_request["ShipmentConfirmRequest"]["Shipment"]["Shipper"]["Address"]["AddressLine2"] = from_addr[
+                "address2"
+            ]
 
         if to_addr.get("company"):
-            shipping_request["ShipmentConfirmRequest"]["Shipment"]["ShipTo"][
-                "CompanyName"
-            ] = to_addr["company"]
+            shipping_request["ShipmentConfirmRequest"]["Shipment"]["ShipTo"]["CompanyName"] = to_addr["company"]
 
         if to_addr.get("address2"):
-            shipping_request["ShipmentConfirmRequest"]["Shipment"]["ShipTo"]["Address"][
-                "AddressLine2"
-            ] = to_addr["address2"]
+            shipping_request["ShipmentConfirmRequest"]["Shipment"]["ShipTo"]["Address"]["AddressLine2"] = to_addr[
+                "address2"
+            ]
 
-        self.confirm_result = ups_conn._transmit_request(
-            "ship_confirm", shipping_request
-        )
+        self.confirm_result = ups_conn._transmit_request("ship_confirm", shipping_request)
 
-        if (
-            "ShipmentDigest"
-            not in self.confirm_result.dict_response["ShipmentConfirmResponse"]
-        ):
-            error_string = self.confirm_result.dict_response["ShipmentConfirmResponse"][
-                "Response"
-            ]["Error"]["ErrorDescription"]
+        if "ShipmentDigest" not in self.confirm_result.dict_response["ShipmentConfirmResponse"]:
+            error_string = self.confirm_result.dict_response["ShipmentConfirmResponse"]["Response"]["Error"][
+                "ErrorDescription"
+            ]
             raise Exception(error_string)
 
-        confirm_result_digest = self.confirm_result.dict_response[
-            "ShipmentConfirmResponse"
-        ]["ShipmentDigest"]
+        confirm_result_digest = self.confirm_result.dict_response["ShipmentConfirmResponse"]["ShipmentDigest"]
         ship_accept_request = {
             "ShipmentAcceptRequest": {
                 "Request": {
@@ -351,28 +316,24 @@ class Shipment(object):
             }
         }
 
-        self.accept_result = ups_conn._transmit_request(
-            "ship_accept", ship_accept_request
-        )
+        self.accept_result = ups_conn._transmit_request("ship_accept", ship_accept_request)
 
     @property
     def cost(self):
-        total_cost = self.confirm_result.dict_response["ShipmentConfirmResponse"][
-            "ShipmentCharges"
-        ]["TotalCharges"]["MonetaryValue"]
+        total_cost = self.confirm_result.dict_response["ShipmentConfirmResponse"]["ShipmentCharges"]["TotalCharges"][
+            "MonetaryValue"
+        ]
         return float(total_cost)
 
     @property
     def tracking_number(self):
-        tracking_number = self.confirm_result.dict_response["ShipmentConfirmResponse"][
-            "ShipmentIdentificationNumber"
-        ]
+        tracking_number = self.confirm_result.dict_response["ShipmentConfirmResponse"]["ShipmentIdentificationNumber"]
         return tracking_number
 
     def get_label(self):
-        raw_epl = self.accept_result.dict_response["ShipmentAcceptResponse"][
-            "ShipmentResults"
-        ]["PackageResults"]["LabelImage"]["GraphicImage"]
+        raw_epl = self.accept_result.dict_response["ShipmentAcceptResponse"]["ShipmentResults"]["PackageResults"][
+            "LabelImage"
+        ]["GraphicImage"]
         return a2b_base64(raw_epl)
 
     def save_label(self, fd):

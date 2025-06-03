@@ -1,1 +1,1 @@
-from ClassicUPS3.ups import UPSConnection, TrackingInfo
+from ClassicUPS3.ups import TrackingInfo, UPSConnection  # noqa: F401

@@ -1,5 +1,6 @@
 from datetime import datetime
-from ClassicUPS3.ups import UPSConnection, TrackingInfo
+
+from ClassicUPS3.ups import TrackingInfo, UPSConnection
 
 
 def test_tracking_info_initialization(mock_urlopen_factory, ups_connection_params):
@@ -116,21 +117,24 @@ def test_tracking_info_transmit_request_called_correctly(mock_urlopen_factory, u
     mock_urlopen_factory(fixture_file="track_response.xml")
 
     # Spy on the _transmit_request method
-    spy = mocker.spy(conn, '_transmit_request')
+    spy = mocker.spy(conn, "_transmit_request")
 
     TrackingInfo(conn, "1Z12345E6692804405")
 
     # Verify _transmit_request was called with correct parameters
-    spy.assert_called_once_with("track", {
-        "TrackRequest": {
-            "Request": {
-                "TransactionReference": {
-                    "CustomerContext": "Get tracking status",
-                    "XpciVersion": "1.0",
+    spy.assert_called_once_with(
+        "track",
+        {
+            "TrackRequest": {
+                "Request": {
+                    "TransactionReference": {
+                        "CustomerContext": "Get tracking status",
+                        "XpciVersion": "1.0",
+                    },
+                    "RequestAction": "Track",
+                    "RequestOption": "activity",
                 },
-                "RequestAction": "Track",
-                "RequestOption": "activity",
+                "TrackingNumber": "1Z12345E6692804405",
             },
-            "TrackingNumber": "1Z12345E6692804405",
         },
-    })
+    )

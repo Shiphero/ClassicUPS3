@@ -9,7 +9,7 @@ description = "Usable UPS Integration in Python 3.8+"
 readme = "README.rst"
 requires-python = ">=3.8"
 license = { text = "GPL-3.0-or-later" }
-authors = [ { name = "Jason Duncan", email = "jason.matthew.duncan@gmail.com" } ]
+authors = [{ name = "Jason Duncan", email = "jason.matthew.duncan@gmail.com" }]
 keywords = ["UPS"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,12 +17,46 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Intended Audience :: Developers",
-    "Development Status :: 4 - Beta"
+    "Development Status :: 4 - Beta",
 ]
-dependencies = [
-    "dict2xml",
-    "xmltodict"
+dependencies = ["dict2xml", "xmltodict"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+indent-width = 4
+force-exclude = true
+exclude = [
+    # remove when https://shiphero.atlassian.net/browse/TOOL-305
+    ".platform",
+    ".git",
+    "shiphero_app/shiphero_app/core/magento",
+    "shiphero_app/shiphero_app/utils/legacy/magento.py",
+    # https://shiphero.atlassian.net/browse/TOOL-429
+    "shiphero_app/tests/infrastructure/sync/asyncio",
 ]
+
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",      # pycodestyle (E, W) https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+    "F",      # https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "I",      # isort
+    "C90",    # https://docs.astral.sh/ruff/rules/#mccabe-c90
+    "UP",     # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "RUF",    # https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+    "T10",    # remove pdbs
+    "ISC",    # https://docs.astral.sh/ruff/rules/#flake8-implicit-str-concat-isc
+    "SIM",    # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+    "ASYNC",  # https://docs.astral.sh/ruff/rules/#flake8-async-async
+    "B",      # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+    "C4",     # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+    "PIE",    # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
+    "FURB",   # https://docs.astral.sh/ruff/rules/#refurb-furb
+    "TID252", # https://docs.astral.sh/ruff/rules/relative-imports/
+]
+
 
 [project.urls]
 Homepage = "https://github.com/jduncan8142/ClassicUPS3"
