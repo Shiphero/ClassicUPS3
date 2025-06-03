@@ -90,3 +90,29 @@ Create shipment and save shipping label as GIF file:
 
     # Save the shipping label to print, email, etc
     shipment.save_label(open('label.gif', 'wb'))
+
+Contributing
+------------
+
+Contributions are welcome! To contribute to ClassicUPS3, please follow these steps:
+
+1.  Fork the repository on GitHub.
+2.  Create a new branch for your feature or bug fix.
+3.  Implement your changes.
+4.  Ensure your code adheres to the project's coding standards by running:
+
+    .. code-block:: bash
+
+        $ uv run ruff check .
+        $ uv run ruff format --check .
+
+5.  Write tests for your changes.  We aim for 100% test coverage.
+6.  Run the tests:
+
+    .. code-block:: bash
+
+        $ uv run pytest --cov=ClassicUPS3 --cov-fail-under=100
+
+7.  Commit your changes.
+8.  Push your branch to your forked repository.
+9.  Create a pull request on GitHub.
