@@ -225,6 +225,109 @@ def test_shipment_with_reference_and_address2(monkeypatched_urlopen):
     shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, reference_numbers=reference_numbers)
     assert shipment.cost == 12.34
 
+def test_shipment_international_with_reference_numbers(monkeypatched_urlopen):
+    """Test international shipment (non-US to non-US) with reference numbers to cover the else branch"""
+    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
+    from_addr = {
+        "name": "Sender International",
+        "attn": "Sender Attn",
+        "phone": "555-1111",
+        "address1": "123 International St",
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",  # Canada
+        "postal_code": "M5V 3A8"
+    }
+    to_addr = {
+        "name": "Recipient International",
+        "phone": "555-2222",
+        "address1": "456 Global Ave",
+        "city": "London",
+        "state": "EN",
+        "country": "GB",  # UK
+        "postal_code": "SW1A 1AA"
+    }
+    dimensions = {"length": "10", "width": "5", "height": "3"}
+    weight = "2"
+    reference_numbers = ["INTL-REF1", "INTL-REF2"]
+    description = "International shipment description"
+    
+    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, 
+                       reference_numbers=reference_numbers, description=description)
+    assert shipment.cost == 12.34
+    assert shipment.tracking_number == "1Z9999999999999999"
+
+def test_shipment_with_delivery_confirmation(monkeypatched_urlopen):
+    """Test shipment with delivery confirmation to cover the delivery_confirmation branch"""
+    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
+    from_addr = {
+        "name": "Sender",
+        "attn": "Sender Attn",
+        "phone": "555-1111",
+        "address1": "123 Main St",
+        "city": "City",
+        "state": "ST",
+        "country": "US",
+        "postal_code": "12345"
+    }
+    to_addr = {
+        "name": "Recipient",
+        "phone": "555-2222",
+        "address1": "456 Elm St",
+        "city": "Town",
+        "state": "TS",
+        "country": "US",
+        "postal_code": "67890"
+    }
+    dimensions = {"length": "10", "width": "5", "height": "3"}
+    weight = "2"
+    
+    # Test with delivery confirmation
+    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, 
+                       delivery_confirmation="signature_required")
+    assert shipment.cost == 12.34
+    assert shipment.tracking_number == "1Z9999999999999999"
+
+def test_upsconnection_tracking_info_convenience_method(monkeypatched_urlopen):
+    """Test UPSConnection.tracking_info() convenience method"""
+    conn = UPSConnection("LIC", "USER", "PASS", debug=True)
+    
+    # Test that tracking_info() returns a TrackingInfo instance
+    info = conn.tracking_info("1Z12345E6692804405")
+    assert isinstance(info, TrackingInfo)
+    assert info.tracking_number == "1Z12345E6692804405"
+
+def test_upsconnection_create_shipment_convenience_method(monkeypatched_urlopen):
+    """Test UPSConnection.create_shipment() convenience method"""
+    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
+    from_addr = {
+        "name": "Sender",
+        "attn": "Sender Attn",
+        "phone": "555-1111",
+        "address1": "123 Main St",
+        "city": "City",
+        "state": "ST",
+        "country": "US",
+        "postal_code": "12345"
+    }
+    to_addr = {
+        "name": "Recipient",
+        "phone": "555-2222",
+        "address1": "456 Elm St",
+        "city": "Town",
+        "state": "TS",
+        "country": "US",
+        "postal_code": "67890"
+    }
+    dimensions = {"length": "10", "width": "5", "height": "3"}
+    weight = "2"
+    
+    # Test that create_shipment() returns a Shipment instance
+    shipment = conn.create_shipment(from_addr, to_addr, dimensions, weight)
+    assert isinstance(shipment, Shipment)
+    assert shipment.cost == 12.34
+    assert shipment.tracking_number == "1Z9999999999999999"
+
 def test_shipment_error(monkeypatch, dummy_shipment_confirm_response):
     # Patch urlopen to return a ShipmentConfirmResponse without ShipmentDigest
     error_xml = b"""<?xml version="1.0"?>
