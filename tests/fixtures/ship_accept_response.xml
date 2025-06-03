@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ShipmentAcceptResponse>
+  <Response>
+    <TransactionReference>
+      <CustomerContext>shipment accept reference</CustomerContext>
+      <XpciVersion>1.0001</XpciVersion>
+    </TransactionReference>
+    <ResponseStatusCode>1</ResponseStatusCode>
+    <ResponseStatusDescription>Success</ResponseStatusDescription>
+  </Response>
+  <ShipmentResults>
+    <ShipmentCharges>
+      <TransportationCharges>
+        <CurrencyCode>USD</CurrencyCode>
+        <MonetaryValue>10.50</MonetaryValue>
+      </TransportationCharges>
+      <ServiceOptionsCharges>
+        <CurrencyCode>USD</CurrencyCode>
+        <MonetaryValue>1.84</MonetaryValue>
+      </ServiceOptionsCharges>
+      <TotalCharges>
+        <CurrencyCode>USD</CurrencyCode>
+        <MonetaryValue>12.34</MonetaryValue>
+      </TotalCharges>
+    </ShipmentCharges>
+    <BillingWeight>
+      <UnitOfMeasurement>
+        <Code>LBS</Code>
+      </UnitOfMeasurement>
+      <Weight>2.0</Weight>
+    </BillingWeight>
+    <ShipmentIdentificationNumber>1Z9999999999999999</ShipmentIdentificationNumber>
+    <PackageResults>
+      <TrackingNumber>1Z9999999999999999</TrackingNumber>
+      <ServiceOptionsCharges>
+        <CurrencyCode>USD</CurrencyCode>
+        <MonetaryValue>1.84</MonetaryValue>
+      </ServiceOptionsCharges>
+      <LabelImage>
+        <LabelImageFormat>
+          <Code>GIF</Code>
+        </LabelImageFormat>
+        <GraphicImage>U29tZUJhc2U2NEltYWdl</GraphicImage>
+      </LabelImage>
+    </PackageResults>
+  </ShipmentResults>
+</ShipmentAcceptResponse>

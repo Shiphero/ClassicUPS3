@@ -1,371 +1,123 @@
-import io
-import types
 import pytest
-import urllib.request
 from ClassicUPS3.ups import UPSConnection, UPSResult, TrackingInfo, Shipment
 
-class DummyResponse(io.BytesIO):
-    def __init__(self, data):
-        super().__init__(data)
-    def __enter__(self): return self
-    def __exit__(self, *a): self.close()
-    @property
-    def status(self): return 200
 
-@pytest.fixture
-def dummy_xml_response():
-    # Minimal valid XML for UPSResult and TrackingInfo
-    return b"""<?xml version="1.0"?>
-    <TrackResponse>
-      <Shipment>
-        <Package>
-          <Activity>
-            <Status>
-              <StatusType>
-                <Code>I</Code>
-              </StatusType>
-            </Status>
-            <Date>20230520</Date>
-          </Activity>
-          <Activity>
-            <Status>
-              <StatusType>
-                <Code>D</Code>
-              </StatusType>
-            </Status>
-            <Date>20230522</Date>
-          </Activity>
-        </Package>
-      </Shipment>
-    </TrackResponse>"""
+def test_upsconnection_init_with_all_params(ups_connection_params):
+    """Test UPSConnection initialization with all parameters"""
+    conn = UPSConnection(**ups_connection_params)
+    assert conn.license_number == "TEST_LICENSE"
+    assert conn.user_id == "TEST_USER"
+    assert conn.password == "TEST_PASS"
+    assert conn.shipper_number == "123456"
+    assert conn.debug is True
 
-@pytest.fixture
-def dummy_shipment_confirm_response():
-    # Minimal valid XML for Shipment confirm
-    return b"""<?xml version="1.0"?>
-    <ShipmentConfirmResponse>
-      <ShipmentDigest>digest123</ShipmentDigest>
-      <ShipmentCharges>
-        <TotalCharges>
-          <MonetaryValue>12.34</MonetaryValue>
-        </TotalCharges>
-      </ShipmentCharges>
-      <ShipmentIdentificationNumber>1Z9999999999999999</ShipmentIdentificationNumber>
-      <Response>
-        <ResponseStatusCode>1</ResponseStatusCode>
-      </Response>
-    </ShipmentConfirmResponse>"""
 
-@pytest.fixture
-def dummy_shipment_accept_response():
-    # Minimal valid XML for Shipment accept
-    return b"""<?xml version="1.0"?>
-    <ShipmentAcceptResponse>
-      <ShipmentResults>
-        <PackageResults>
-          <LabelImage>
-            <GraphicImage>U29tZUJhc2U2NEltYWdl</GraphicImage>
-          </LabelImage>
-        </PackageResults>
-      </ShipmentResults>
-    </ShipmentAcceptResponse>"""
-
-@pytest.fixture
-def monkeypatched_urlopen(monkeypatch, dummy_xml_response, dummy_shipment_confirm_response, dummy_shipment_accept_response):
-    """
-    Patch urllib.request.urlopen to return different responses depending on the request XML.
-    """
-    def fake_urlopen(url, data):
-        print("Request data:", data)
-        if b"TrackingNumber" in data:
-            return DummyResponse(dummy_xml_response)
-        elif b"ShipConfirm" in data:
-            return DummyResponse(dummy_shipment_confirm_response)
-        elif b"ShipAccept" in data:
-            return DummyResponse(dummy_shipment_accept_response)
-        else:
-            return DummyResponse(b"<Unknown/>")
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-
-def test_upsconnection_init_and_attrs():
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
+def test_upsconnection_init_minimal_params():
+    """Test UPSConnection initialization with minimal parameters"""
+    conn = UPSConnection("LIC", "USER", "PASS")
     assert conn.license_number == "LIC"
     assert conn.user_id == "USER"
     assert conn.password == "PASS"
-    assert conn.shipper_number == "123"
-    assert conn.debug is True
+    assert conn.shipper_number is None
+    assert conn.debug is False
 
-def test_generate_xml_contains_credentials():
-    conn = UPSConnection("LIC", "USER", "PASS")
-    xml = conn._generate_xml("track", {"foo": "bar"})
-    assert "LIC" in xml
-    assert "USER" in xml
-    assert "PASS" in xml
-    assert "foo" in xml
 
-def test_transmit_request_selects_test_url(monkeypatched_urlopen):
-    conn = UPSConnection("LIC", "USER", "PASS", debug=True)
-    # Should use test_urls
+def test_upsconnection_generate_xml_contains_credentials(ups_connection_params):
+    """Test that _generate_xml includes access credentials"""
+    conn = UPSConnection(**ups_connection_params)
+    xml = conn._generate_xml("track", {"TrackingNumber": "1Z12345E6692804405"})
+    
+    assert "TEST_LICENSE" in xml
+    assert "TEST_USER" in xml
+    assert "TEST_PASS" in xml
+    assert "TrackingNumber" in xml
+    assert "1Z12345E6692804405" in xml
+    assert "AccessRequest" in xml
+
+
+def test_upsconnection_transmit_request_uses_test_urls_when_debug_true(mock_urlopen_factory, ups_connection_params):
+    """Test that _transmit_request uses test URLs when debug=True"""
+    ups_connection_params["debug"] = True
+    conn = UPSConnection(**ups_connection_params)
+    
+    mock_urlopen_factory(fixture_file="track_response.xml")
     result = conn._transmit_request("track", {"TrackingNumber": "1Z12345E6692804405"})
+    
     assert isinstance(result, UPSResult)
     assert b"TrackResponse" in result.response
 
-def test_transmit_request_selects_production_url(monkeypatched_urlopen):
-    conn = UPSConnection("LIC", "USER", "PASS", debug=False)
-    # Should use production_urls
+
+def test_upsconnection_transmit_request_uses_production_urls_when_debug_false(mock_urlopen_factory, ups_connection_params):
+    """Test that _transmit_request uses production URLs when debug=False"""
+    ups_connection_params["debug"] = False
+    conn = UPSConnection(**ups_connection_params)
+    
+    mock_urlopen_factory(fixture_file="track_response.xml")
     result = conn._transmit_request("track", {"TrackingNumber": "1Z12345E6692804405"})
+    
     assert isinstance(result, UPSResult)
     assert b"TrackResponse" in result.response
 
-def test_tracking_info_properties(monkeypatched_urlopen):
-    conn = UPSConnection("LIC", "USER", "PASS", debug=True)
-    info = TrackingInfo(conn, "1Z12345E6692804405")
-    acts = info.shipment_activities
-    assert isinstance(acts, list)
-    assert acts[0]["Status"]["StatusType"]["Code"] == "I"
-    assert info.in_transit is True
-    assert info.delivered.year == 2023
-    assert info.delivered.month == 5
-    assert info.delivered.day == 22
 
-def test_upsresult_properties(dummy_xml_response):
-    result = UPSResult(dummy_xml_response)
-    assert result.xml_response == dummy_xml_response
-    d = result.dict_response
-    assert "TrackResponse" in d
-
-def test_tracking_info_single_activity(monkeypatch, dummy_xml_response):
-    # Patch dummy_xml_response to only have one Activity (not a list)
-    single_activity_xml = b"""<?xml version="1.0"?>
-    <TrackResponse>
-      <Shipment>
-        <Package>
-          <Activity>
-            <Status>
-              <StatusType>
-                <Code>I</Code>
-              </StatusType>
-            </Status>
-            <Date>20230520</Date>
-          </Activity>
-        </Package>
-      </Shipment>
-    </TrackResponse>"""
-    def fake_urlopen(url, data):
-        return DummyResponse(single_activity_xml)
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    conn = UPSConnection("LIC", "USER", "PASS", debug=True)
-    info = TrackingInfo(conn, "1Z12345E6692804405")
-    acts = info.shipment_activities
-    assert isinstance(acts, list)
-    assert len(acts) == 1
-
-def test_shipment_success(monkeypatched_urlopen):
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 Main St",
-        "city": "City",
-        "state": "ST",
-        "country": "US",
-        "postal_code": "12345"
-    }
-    to_addr = {
-        "name": "Recipient",
-        "phone": "555-2222",
-        "address1": "456 Elm St",
-        "city": "Town",
-        "state": "TS",
-        "country": "US",
-        "postal_code": "67890"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
-    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight)
-    assert shipment.cost == 12.34
-    assert shipment.tracking_number == "1Z9999999999999999"
-    label = shipment.get_label()
-    assert isinstance(label, bytes)
-    assert label == b'SomeBase64Image'
-    # Test save_label
-    buf = io.BytesIO()
-    shipment.save_label(buf)
-    buf.seek(0)
-    assert buf.read() == b'SomeBase64Image'
-
-def test_shipment_with_reference_and_address2(monkeypatched_urlopen):
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 Main St",
-        "address2": "Suite 100",
-        "city": "City",
-        "state": "ST",
-        "country": "US",
-        "postal_code": "12345"
-    }
-    to_addr = {
-        "name": "Recipient",
-        "company": "Recipient Co",
-        "phone": "555-2222",
-        "address1": "456 Elm St",
-        "address2": "Apt 2",
-        "city": "Town",
-        "state": "TS",
-        "country": "US",
-        "postal_code": "67890"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
-    reference_numbers = ["REF1", ("CODE2", "REF2")]
-    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, reference_numbers=reference_numbers)
-    assert shipment.cost == 12.34
-
-def test_shipment_international_with_reference_numbers(monkeypatched_urlopen):
-    """Test international shipment (non-US to non-US) with reference numbers to cover the else branch"""
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender International",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 International St",
-        "city": "Toronto",
-        "state": "ON",
-        "country": "CA",  # Canada
-        "postal_code": "M5V 3A8"
-    }
-    to_addr = {
-        "name": "Recipient International",
-        "phone": "555-2222",
-        "address1": "456 Global Ave",
-        "city": "London",
-        "state": "EN",
-        "country": "GB",  # UK
-        "postal_code": "SW1A 1AA"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
-    reference_numbers = ["INTL-REF1", "INTL-REF2"]
-    description = "International shipment description"
+def test_upsconnection_tracking_info_convenience_method(mock_urlopen_factory, ups_connection_params):
+    """Test tracking_info convenience method returns TrackingInfo instance"""
+    conn = UPSConnection(**ups_connection_params)
+    mock_urlopen_factory(fixture_file="track_response.xml")
     
-    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, 
-                       reference_numbers=reference_numbers, description=description)
-    assert shipment.cost == 12.34
-    assert shipment.tracking_number == "1Z9999999999999999"
-
-def test_shipment_with_delivery_confirmation(monkeypatched_urlopen):
-    """Test shipment with delivery confirmation to cover the delivery_confirmation branch"""
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 Main St",
-        "city": "City",
-        "state": "ST",
-        "country": "US",
-        "postal_code": "12345"
-    }
-    to_addr = {
-        "name": "Recipient",
-        "phone": "555-2222",
-        "address1": "456 Elm St",
-        "city": "Town",
-        "state": "TS",
-        "country": "US",
-        "postal_code": "67890"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
-    
-    # Test with delivery confirmation
-    shipment = Shipment(conn, from_addr, to_addr, dimensions, weight, 
-                       delivery_confirmation="signature_required")
-    assert shipment.cost == 12.34
-    assert shipment.tracking_number == "1Z9999999999999999"
-
-def test_upsconnection_tracking_info_convenience_method(monkeypatched_urlopen):
-    """Test UPSConnection.tracking_info() convenience method"""
-    conn = UPSConnection("LIC", "USER", "PASS", debug=True)
-    
-    # Test that tracking_info() returns a TrackingInfo instance
     info = conn.tracking_info("1Z12345E6692804405")
     assert isinstance(info, TrackingInfo)
     assert info.tracking_number == "1Z12345E6692804405"
 
-def test_upsconnection_create_shipment_convenience_method(monkeypatched_urlopen):
-    """Test UPSConnection.create_shipment() convenience method"""
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 Main St",
-        "city": "City",
-        "state": "ST",
-        "country": "US",
-        "postal_code": "12345"
-    }
-    to_addr = {
-        "name": "Recipient",
-        "phone": "555-2222",
-        "address1": "456 Elm St",
-        "city": "Town",
-        "state": "TS",
-        "country": "US",
-        "postal_code": "67890"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
+
+def test_upsconnection_create_shipment_convenience_method(mock_urlopen_factory, ups_connection_params, sample_addresses, sample_package):
+    """Test create_shipment convenience method returns Shipment instance"""
+    conn = UPSConnection(**ups_connection_params)
+    mock_urlopen_factory(response_mapping={
+        b"ShipConfirm": "ship_confirm_response.xml",
+        b"ShipAccept": "ship_accept_response.xml"
+    })
     
-    # Test that create_shipment() returns a Shipment instance
-    shipment = conn.create_shipment(from_addr, to_addr, dimensions, weight)
+    shipment = conn.create_shipment(
+        sample_addresses["us_from"],
+        sample_addresses["us_to"],
+        sample_package["dimensions"],
+        sample_package["weight"]
+    )
+    
     assert isinstance(shipment, Shipment)
     assert shipment.cost == 12.34
     assert shipment.tracking_number == "1Z9999999999999999"
 
-def test_shipment_error(monkeypatch, dummy_shipment_confirm_response):
-    # Patch urlopen to return a ShipmentConfirmResponse without ShipmentDigest
-    error_xml = b"""<?xml version="1.0"?>
-    <ShipmentConfirmResponse>
-      <Response>
-        <Error>
-          <ErrorDescription>Some error occurred</ErrorDescription>
-        </Error>
-      </Response>
-    </ShipmentConfirmResponse>"""
-    def fake_urlopen(url, data):
-        if b"ShipConfirm" in data:
-            return DummyResponse(error_xml)
-        else:
-            return DummyResponse(b"<Unknown/>")
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    conn = UPSConnection("LIC", "USER", "PASS", shipper_number="123", debug=True)
-    from_addr = {
-        "name": "Sender",
-        "attn": "Sender Attn",
-        "phone": "555-1111",
-        "address1": "123 Main St",
-        "city": "City",
-        "state": "ST",
-        "country": "US",
-        "postal_code": "12345"
-    }
-    to_addr = {
-        "name": "Recipient",
-        "phone": "555-2222",
-        "address1": "456 Elm St",
-        "city": "Town",
-        "state": "TS",
-        "country": "US",
-        "postal_code": "67890"
-    }
-    dimensions = {"length": "10", "width": "5", "height": "3"}
-    weight = "2"
-    with pytest.raises(Exception) as excinfo:
-        Shipment(conn, from_addr, to_addr, dimensions, weight)
-    assert "Some error occurred" in str(excinfo.value)
+
+def test_upsresult_xml_response_property():
+    """Test xml_response property returns original response"""
+    test_xml = b'<?xml version="1.0"?><TestResponse><Status>Success</Status></TestResponse>'
+    result = UPSResult(test_xml)
+    assert result.xml_response == test_xml
+
+
+def test_upsresult_dict_response_property():
+    """Test dict_response property converts XML to dictionary"""
+    test_xml = b'<?xml version="1.0"?><TrackResponse><Shipment><Package><Activity><Status><StatusType><Code>I</Code></StatusType></Status><Date>20230520</Date></Activity></Package></Shipment></TrackResponse>'
+    result = UPSResult(test_xml)
+    
+    dict_response = result.dict_response
+    assert isinstance(dict_response, dict)
+    assert "TrackResponse" in dict_response
+    assert "Shipment" in dict_response["TrackResponse"]
+
+
+def test_upsresult_dict_response_with_complex_structure(mock_urlopen_factory):
+    """Test dict_response with a complex XML structure from fixture"""
+    from pathlib import Path
+    fixtures_dir = Path(__file__).parent / "fixtures"
+    track_xml = (fixtures_dir / "track_response.xml").read_bytes()
+    
+    result = UPSResult(track_xml)
+    dict_response = result.dict_response
+    
+    assert isinstance(dict_response, dict)
+    assert "TrackResponse" in dict_response
+    shipment = dict_response["TrackResponse"]["Shipment"]
+    assert "Package" in shipment
+    assert "Activity" in shipment["Package"]

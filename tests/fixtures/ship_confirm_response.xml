@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ShipmentConfirmResponse>
+  <Response>
+    <TransactionReference>
+      <CustomerContext>get new shipment</CustomerContext>
+      <XpciVersion>1.0001</XpciVersion>
+    </TransactionReference>
+    <ResponseStatusCode>1</ResponseStatusCode>
+    <ResponseStatusDescription>Success</ResponseStatusDescription>
+  </Response>
+  <ShipmentCharges>
+    <TransportationCharges>
+      <CurrencyCode>USD</CurrencyCode>
+      <MonetaryValue>10.50</MonetaryValue>
+    </TransportationCharges>
+    <ServiceOptionsCharges>
+      <CurrencyCode>USD</CurrencyCode>
+      <MonetaryValue>1.84</MonetaryValue>
+    </ServiceOptionsCharges>
+    <TotalCharges>
+      <CurrencyCode>USD</CurrencyCode>
+      <MonetaryValue>12.34</MonetaryValue>
+    </TotalCharges>
+  </ShipmentCharges>
+  <BillingWeight>
+    <UnitOfMeasurement>
+      <Code>LBS</Code>
+    </UnitOfMeasurement>
+    <Weight>2.0</Weight>
+  </BillingWeight>
+  <ShipmentIdentificationNumber>1Z9999999999999999</ShipmentIdentificationNumber>
+  <ShipmentDigest>digest123</ShipmentDigest>
+</ShipmentConfirmResponse>
