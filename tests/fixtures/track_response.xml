@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<TrackResponse>
+  <Response>
+    <ResponseStatusCode>1</ResponseStatusCode>
+    <ResponseStatusDescription>Success</ResponseStatusDescription>
+  </Response>
+  <Shipment>
+    <ShipmentIdentificationNumber>1Z12345E6692804405</ShipmentIdentificationNumber>
+    <Package>
+      <Activity>
+        <Status>
+          <StatusType>
+            <Code>I</Code>
+            <Description>In Transit</Description>
+          </StatusType>
+        </Status>
+        <Date>20230520</Date>
+        <Time>134500</Time>
+      </Activity>
+      <Activity>
+        <Status>
+          <StatusType>
+            <Code>D</Code>
+            <Description>Delivered</Description>
+          </StatusType>
+        </Status>
+        <Date>20230522</Date>
+        <Time>101230</Time>
+      </Activity>
+    </Package>
+  </Shipment>
+</TrackResponse>
