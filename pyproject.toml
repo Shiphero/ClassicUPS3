@@ -22,19 +22,11 @@ classifiers = [
 dependencies = ["dict2xml", "xmltodict"]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py312"
 line-length = 120
 indent-width = 4
 force-exclude = true
-exclude = [
-    # remove when https://shiphero.atlassian.net/browse/TOOL-305
-    ".platform",
-    ".git",
-    "shiphero_app/shiphero_app/core/magento",
-    "shiphero_app/shiphero_app/utils/legacy/magento.py",
-    # https://shiphero.atlassian.net/browse/TOOL-429
-    "shiphero_app/tests/infrastructure/sync/asyncio",
-]
+exclude = [".platform", ".git"]
 
 
 [tool.ruff.lint]
