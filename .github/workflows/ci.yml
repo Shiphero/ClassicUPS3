@@ -5,12 +5,8 @@ on:
       - main
 
 jobs:
-  build:
-    env:
-      FORCE_COLOR: 1
-
+  lint:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -21,5 +17,14 @@ jobs:
       - name: Ruff format
         run: uv run ruff format --check
 
-      - name: Pytest
-        run: uv run pytest --cov=ClassicUPS3 --cov-fail-under=100
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --p ${{ matrix.python-version }} pytest --cov=ClassicUPS3 --cov-fail-under=100
